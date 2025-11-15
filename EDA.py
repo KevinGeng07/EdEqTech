@@ -3,10 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tabulate import tabulate
 
-ag_csv = pd.read_csv('Affordability Gap Data AY2022-23 2.17.25.xlsx - Affordability_latest_02-17-25 1.csv')
-
 cr_csv = pd.read_csv('College Results View 2021 Data Dump for Export.xlsx - College Results View 2021 Data .csv')
-# print(cr_csv.columns)
 
 ### Replace 'NA' with np.nan.
 cr_csv.replace('NA', np.nan, inplace=True)
@@ -16,13 +13,14 @@ print(len(cr_csv), cr_csv.isna().any(axis=1).sum())
 
 ### Count number of nulls. -> Remove columns with 65%+ total nulls & rows with 65%+ total nulls.
 print(cr_csv.isna().sum())
-# print(cr_csv.columns[cr_csv.isna().mean() > 0.75])
 cr_csv = cr_csv[cr_csv.columns[cr_csv.isna().mean() <= 0.65]]
 cr_csv = cr_csv[cr_csv.isna().mean(axis=1) <= 0.65]
-
 print(len(cr_csv.columns), len(cr_csv))
 
+cr_csv.to_csv('college_results.csv', index=False)
 
+
+### Create tabulation file.
 writefile = 'college_results_table.txt'
 open(writefile, 'w').close()
 
@@ -45,3 +43,8 @@ with open(writefile, 'a') as wf:
     
     wf.write(tabulate(feature_table[1:], headers=feature_table[0], tablefmt='fancy_grid'))
     wf.close()
+
+
+
+
+ag_csv = pd.read_csv('Affordability Gap Data AY2022-23 2.17.25.xlsx - Affordability_latest_02-17-25 1.csv')
