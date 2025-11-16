@@ -9,12 +9,12 @@ def cosine_similarity(a, b):
 
 def similarities(expectation, actual):
     sim = []
-    for a in actual:
-        sim.append(cosine_similarity(expectation, a))
+    for id, a in enumerate(actual):
+        sim.append([cosine_similarity(expectation, a), id])
 
-    return sorted(sim)
+    return sorted(sim, key=lambda x: x[0])
 
-expectation = np.array([10, 3, 4, 5])
+expectation = np.array([[10, 2], [3, 3], [4, 1], [5, 0]])
 actual = [
     np.array([1, 2, 3, 4]),
     np.array([2, 3, 4 ,5]),
