@@ -18,7 +18,7 @@ for color, name, col in zip(colors, names, subset.columns):
 
 fig = go.Figure(traces)
 fig.update_layout(barmode='overlay',
-                  title={'text': 'Degree Distribution per Racial Group', 'y': 0.9, 'x': 0.5},
+                  title={'text': 'Degree Distribution per Racial Group', 'y': 0.85, 'x': 0.5},
                   xaxis_title='Number of Bachelor\'s Degrees', yaxis_title='Frequency',)
 fig.update_xaxes(range=[0, 5000])
 fig.update_yaxes(range=[0, 5000])
@@ -33,6 +33,7 @@ subset['MSI Status'] = subset['MSI Status'].astype(str)
 fig = px.scatter_geo(subset, lat='Latitude', lon='Longitude', size='Average Cost of Attendance', size_max=15, 
                      color='MSI Status', color_discrete_map={'0.0': 'blue', '1.0': 'red'}, scope='usa')
 
-fig.update_layout(title={'text': 'Randomly Sampled College by Tuition and MSI Status', 'y': 0.9, 'x': 0.5},
-                  geo=dict(showland=True, landcolor="lightgray"))
+fig.update_layout(title={'text': '250 Colleges by Tuition and MSI Status', 'y': 0.85, 'x': 0.5},
+                  geo=dict(showland=True, landcolor="lightgray"),
+                  legend=dict(x=0.9, y=0.5, xanchor='left', yanchor='middle'))
 fig.write_image('visualizations/tuition_msi_viz.jpg')
