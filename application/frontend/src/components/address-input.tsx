@@ -21,7 +21,7 @@ export default function AddressInput({ onPlaceSelect }: Props) {
   >([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const places = useMapsLibrary("places");
-  
+
   // Refs to store the Google Maps services
   const autocompleteService =
     useRef<google.maps.places.AutocompleteService | null>(null);
@@ -53,8 +53,9 @@ export default function AddressInput({ onPlaceSelect }: Props) {
           sessionToken: sessionToken.current,
           // You can add more options here, like 'types', 'componentRestrictions'
         };
-        const response =
-          await autocompleteService.current.getPlacePredictions(request);
+        const response = await autocompleteService.current.getPlacePredictions(
+          request
+        );
         setSuggestions(response.predictions || []);
       } catch (error) {
         console.error("Error fetching place predictions:", error);
@@ -76,7 +77,7 @@ export default function AddressInput({ onPlaceSelect }: Props) {
     suggestion: google.maps.places.AutocompletePrediction
   ) => {
     // Set the input text to the selected suggestion
-    setInputValue('');
+    setInputValue("");
     // Clear the suggestions list
     setSuggestions([]);
     // Pass the selected place (which includes the place_id) to the parent
@@ -85,7 +86,6 @@ export default function AddressInput({ onPlaceSelect }: Props) {
     // Create a new session token for the next set of searches
     if (places) {
       sessionToken.current = new places.AutocompleteSessionToken();
-      
     }
   };
 
@@ -121,9 +121,7 @@ export default function AddressInput({ onPlaceSelect }: Props) {
                   {/* Here's your custom MapPin icon! */}
                   <MapPin className="h-4 w-4" />
                 </div>
-                <span className="text-sm">
-                  {suggestion.description}
-                </span>
+                <span className="text-sm">{suggestion.description}</span>
               </li>
             ))}
           </ul>

@@ -1,7 +1,7 @@
 // src/components/geolocator.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import {
   APIProvider,
   Map,
@@ -23,7 +23,6 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -32,25 +31,119 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { Dropdown } from "react-day-picker";
+import { Slider } from "@/components/ui/slider";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Ranking, type RankedSchool } from "./ranking";
 
 type Position = {
   lat: number;
   lng: number;
 };
 
-type ParameterType = "switch" | "number" | "text";
+type ParameterType = "switch" | "number" | "text" | "slider" | "select";
 
-type ParameterConfig = {
+export type ParameterConfig = {
   id: string;
   label: string;
   type: ParameterType;
+  options?: string[];
+  min?: number;
+  max?: number;
+  step?: number;
 };
 
-const ALL_PARAMETERS: ParameterConfig[] = [
-  { id: "isUrgent", label: "Urgent", type: "switch" },
-  { id: "quantity", label: "Quantity", type: "number" },
-  { id: "notes", label: "Notes", type: "text" },
+export const ALL_PARAMETERS: ParameterConfig[] = [
+  {
+    id: "Income Earned from Working 10 Hours a Week at State's Minimum Wage",
+    label: "Income Earned from Working 10 Hours a Week at State's Minimum Wage",
+    type: "slider",
+    min: 0,
+    max: 200,
+    step: 10,
+  },
+  {
+    id: "Affordability Gap (net price minus income earned working 10 hrs at min wage)",
+    label:
+      "Affordability Gap (net price minus income earned working 10 hrs at min wage)",
+    type: "slider",
+    min: -50000,
+    max: 100000,
+    step: 50,
+  },
+  {
+    id: "Adjusted Monthly Center-Based Child Care Cost",
+    label: "Adjusted Monthly Center-Based Child Care Cost",
+    type: "slider",
+    min: 0,
+    max: 5000,
+    step: 500,
+  },
+  {
+    id: "Total Enrollment",
+    label: "Total Enrollment",
+    type: "slider",
+    min: 0,
+    max: 100000,
+    step: 100,
+  },
+  {
+    id: "Transfer Out Rate",
+    label: "Transfer Out Rate",
+    type: "slider",
+    min: 0,
+    max: 100,
+    step: 1,
+  },
+  {
+    id: "Median Earnings of Students Working and Not Enrolled 10 Years After Entry",
+    label:
+      "Median Earnings of Students Working and Not Enrolled 10 Years After Entry",
+    type: "slider",
+    min: 0,
+    max: 1000000,
+    step: 1000,
+  },
+  {
+    id: "Percent of Undergraduates Age 25 and Older",
+    label: "Percent of Undergraduates Age 25 and Older",
+    type: "slider",
+    min: 0,
+    max: 1,
+    step: 0.001,
+  },
+  {
+    id: "Average Cost of Attendance",
+    label: "Average Cost of Attendance",
+    type: "slider",
+    min: 0,
+    max: 1000000,
+    step: 1000,
+  },
+  {
+    id: "Major",
+    label: "Major",
+    type: "select",
+    options: ["STEM", "Arts and Humanities"],
+  },
+  {
+    id: "Race",
+    label: "Race",
+    type: "select",
+    options: [
+      "White",
+      "American Indian or Alaska Native",
+      "Asian",
+      "Black or African American",
+      "Latino",
+      "Native Hawaiian or Other Pacific Islander",
+    ],
+  },
 ];
 
 function ZoomToPosition({
@@ -85,7 +178,14 @@ export default function GeoLocator() {
     isUrgent: false,
     quantity: 1,
     notes: "",
+    priority: 3,
+    category: "Residential",
   });
+  const [collegeCount, setCollegeCount] = useState(1);
+  const [schools, setSchools] = useState<string[]>([]);
+  const [similarities, setSimilarities] = useState<number[]>([]);
+  const [schoolImageUrls, setSchoolImageUrls] = useState<string[]>([]);
+  const [lastQuery, setLastQuery] = useState("");
 
   // --- THIS IS THE ONLY CHANGE ---
   // The type of 'place' is now AutocompletePrediction
@@ -93,8 +193,6 @@ export default function GeoLocator() {
     place: google.maps.places.AutocompletePrediction | null
   ) => {
     setSelectedPlace(place);
-    console.log(typeof place);
-    console.log(place);
     if (place) {
       toast({
         title: "Address Selected",
@@ -123,6 +221,9 @@ export default function GeoLocator() {
 
     setLoading(true);
     setPosition(null);
+    setSchools([]);
+    setSimilarities([]);
+    setSchoolImageUrls([]);
 
     const payload = ALL_PARAMETERS.reduce(
       (acc, param) => {
@@ -132,17 +233,17 @@ export default function GeoLocator() {
           } else {
             acc[param.id] = parameterValues[param.id];
           }
-        } else {
-          acc[param.id] = "undefined";
         }
         return acc;
       },
-      { placeId: selectedPlace.place_id } as { [key: string]: any }
+      { place_id: selectedPlace.place_id, k: collegeCount } as {
+        [key: string]: any;
+      }
     );
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URI}/report`,
+        `${process.env.NEXT_PUBLIC_BACKEND_URI}/get_ranking`,
         {
           method: "POST",
           headers: {
@@ -158,11 +259,30 @@ export default function GeoLocator() {
       }
 
       const data = await response.json();
-      setPosition(data.location);
-      console.log(data);
+      setSchools(data.schools || []);
+      setSimilarities(data.similarities || []);
+      setSchoolImageUrls(data.schoolImageUrls || []);
+
+      const queryPayloadForURL: { [key: string]: any } = {};
+      for (const param of ALL_PARAMETERS) {
+        if (activeParameters.includes(param.id)) {
+          queryPayloadForURL[param.id] = parameterValues[param.id];
+        } else {
+          if (param.type === "switch") {
+            queryPayloadForURL[param.id] = false;
+          } else if (param.type === "select") {
+            queryPayloadForURL[param.id] = null;
+          } else {
+            queryPayloadForURL[param.id] = NaN;
+          }
+        }
+      }
+      queryPayloadForURL["collegeCount"] = collegeCount;
+      setLastQuery(new URLSearchParams(queryPayloadForURL).toString());
+
       toast({
         title: "Location Confirmed",
-        description: `Displaying map for the selected location.`,
+        description: `Displaying the ranking for the selected location.`,
       });
     } catch (error) {
       console.error(error);
@@ -179,6 +299,23 @@ export default function GeoLocator() {
       setLoading(false);
     }
   };
+
+  const rankedSchools = useMemo<RankedSchool[]>(() => {
+    if (
+      !schools ||
+      !similarities ||
+      schools.length !== similarities.length ||
+      schools.length !== schoolImageUrls.length
+    ) {
+      return [];
+    }
+    return schools.map((name, index) => ({
+      name,
+      similarity: similarities[index],
+      rank: index + 1,
+      imageUrl: schoolImageUrls[index],
+    }));
+  }, [schools, similarities, schoolImageUrls]);
 
   // const handlePlaceSelect = async (
   //   place: google.maps.places.AutocompletePrediction | null
@@ -283,7 +420,7 @@ export default function GeoLocator() {
                   [param.id]: Number(e.target.value),
                 }))
               }
-              min="1"
+              min={param.min}
               className="bg-background"
             />
           </div>
@@ -306,6 +443,50 @@ export default function GeoLocator() {
             />
           </div>
         );
+      case "slider":
+        return (
+          <div className="space-y-2" key={param.id}>
+            <div className="flex justify-between">
+              <Label htmlFor={param.id}>{param.label}</Label>
+              <span className="text-sm text-muted-foreground">
+                {parameterValues[param.id]}
+              </span>
+            </div>
+            <Slider
+              id={param.id}
+              min={param.min}
+              max={param.max}
+              step={param.step}
+              value={[parameterValues[param.id]]}
+              onValueChange={([val]) =>
+                setParameterValues((p) => ({ ...p, [param.id]: val }))
+              }
+            />
+          </div>
+        );
+      case "select":
+        return (
+          <div className="space-y-2" key={param.id}>
+            <Label htmlFor={param.id}>{param.label}</Label>
+            <Select
+              value={parameterValues[param.id]}
+              onValueChange={(val) =>
+                setParameterValues((p) => ({ ...p, [param.id]: val }))
+              }
+            >
+              <SelectTrigger id={param.id}>
+                <SelectValue placeholder="Select..." />
+              </SelectTrigger>
+              <SelectContent>
+                {param.options?.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {option}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        );
       default:
         return null;
     }
@@ -317,7 +498,7 @@ export default function GeoLocator() {
       <Card className="w-full max-w-2xl shadow-2xl overflow-hidden">
         <CardHeader className="text-center">
           <CardTitle className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">
-            GeoLocator
+            EquiMatch
           </CardTitle>
           <CardDescription className="pt-1">
             Enter an address and set your parameters.
@@ -338,35 +519,60 @@ export default function GeoLocator() {
               </div>
             )}
             <Card className="p-4 bg-background/50">
-              <div className="mb-4">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-between"
-                    >
-                      Select Parameters({activeParameters.length} selected)
-                      <ChevronDown className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
-                    <DropdownMenuLabel>Available Parameters</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    {ALL_PARAMETERS.map((param) => (
-                      <DropdownMenuCheckboxItem
-                        key={param.id}
-                        checked={activeParameters.includes(param.id)}
-                        onCheckedChange={() => handleParameterToggle(param.id)}
-                        onSelect={(e) => e.preventDefault()}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="collegeCount">Number of Colleges</Label>
+                  <Input
+                    id="collegeCount"
+                    type="number"
+                    value={collegeCount}
+                    onChange={(e) => {
+                      const val = Math.max(
+                        1,
+                        Math.min(20, Number(e.target.value) || 1)
+                      );
+                      setCollegeCount(val);
+                    }}
+                    min={1}
+                    max={20}
+                    className="bg-background"
+                  />
+                </div>
+
+                <div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-between"
                       >
-                        {param.label}
-                      </DropdownMenuCheckboxItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                        Select Parameters ({activeParameters.length} selected)
+                        <ChevronDown className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
+                      <DropdownMenuLabel>
+                        Available Parameters
+                      </DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      {ALL_PARAMETERS.map((param) => (
+                        <DropdownMenuCheckboxItem
+                          key={param.id}
+                          checked={activeParameters.includes(param.id)}
+                          onCheckedChange={() =>
+                            handleParameterToggle(param.id)
+                          }
+                          onSelect={(e) => e.preventDefault()} // Prevent menu from closing on item click
+                        >
+                          {param.label}
+                        </DropdownMenuCheckboxItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-4 mt-4">
                 {ALL_PARAMETERS.filter((param) =>
                   activeParameters.includes(param.id)
                 ).map(renderParameterInput)}
@@ -414,6 +620,10 @@ export default function GeoLocator() {
                 )
               )}
             </div>
+          )}
+
+          {!loading && rankedSchools.length > 0 && (
+            <Ranking schools={rankedSchools} queryParams={lastQuery} />
           )}
         </CardContent>
       </Card>
