@@ -2,6 +2,8 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from tabulate import tabulate
+from sklearn.experimental import enable_iterative_imputer
+from sklearn.impute import KNNImputer, IterativeImputer
 
 cr_csv = pd.read_csv('College Results View 2021 Data Dump for Export.xlsx - College Results View 2021 Data .csv')
 
@@ -16,8 +18,6 @@ print(cr_csv.isna().sum())
 cr_csv = cr_csv[cr_csv.columns[cr_csv.isna().mean() <= 0.65]]
 cr_csv = cr_csv[cr_csv.isna().mean(axis=1) <= 0.65]
 print(len(cr_csv.columns), len(cr_csv))
-
-cr_csv.to_csv('college_results.csv', index=False)
 
 
 ### Create tabulation file.
@@ -43,6 +43,16 @@ with open(writefile, 'a') as wf:
     
     wf.write(tabulate(feature_table[1:], headers=feature_table[0], tablefmt='fancy_grid'))
     wf.close()
+
+cr_csv.to_csv('college_results.csv', index=False)
+
+
+# TODO: WHEN RUNNING ML, ENSURE TRAIN/TEST SPLITS CREATED PRIOR TO ML, OTHERWISE DATA LEAKAGE. OR IGNORE.
+### Create ML version of cr_csv w/ imputations. -> Remove columns of type STRING OBJECT.
+cr_ml_csv = cr_csv.select_dtypes(exclude=['object']).drop(columns=['UNIQUE_IDENTIFICATION_NUMBER_OF_THE_INSTITUTION'], axis=1)
+cr_ml_np = KNNImputer(missing_values=np.nan, n_neighbors=7).fit_transform(cr_ml_csv)
+cr_ml_csv.loc[:, :] = cr_ml_np.round(3)
+cr_ml_csv.to_csv('college_results_ml.csv', index=False)
 
 
 
