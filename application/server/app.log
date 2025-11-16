@@ -1,0 +1,17 @@
+INFO:__main__:[GET] /
+ERROR:fastapi:Form data requires "python-multipart" to be installed. 
+You can install "python-multipart" with: 
+
+pip install python-multipart
+
+ERROR:fastapi:Form data requires "python-multipart" to be installed. 
+You can install "python-multipart" with: 
+
+pip install python-multipart
+
+INFO:__main__:[GET] /
+INFO:__main__:{'placeId': 'ChIJ00mFOjZ5hYARk-l1ppUV6pQ', 'isUrgent': True, 'quantity': 'undefined', 'notes': 'undefined'}
+INFO:__main__:{'placeId': 'ChIJTYQoiiB_hYARYAzG0_paB48', 'isUrgent': 'undefined', 'quantity': 1, 'notes': 'undefined'}
+INFO:__main__:{'placeId': 'ChIJMSKJ1lzmj4ARV0D2joR8Mjs', 'isUrgent': True, 'quantity': 1, 'notes': ''}
+INFO:__main__:{'placeId': 'ChIJMSKJ1lzmj4ARV0D2joR8Mjs', 'isUrgent': True, 'quantity': 1, 'notes': ''}
+INFO:__main__:{'placeId': 'ChIJMSKJ1lzmj4ARV0D2joR8Mjs', 'isUrgent': 'undefined', 'quantity': 'undefined', 'notes': 'undefined'}
